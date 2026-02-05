@@ -1,0 +1,69 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    libxml2-dev \
+    libxslt-dev \
+    libjpeg-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN python -m nltk.downloader punkt
+
+COPY ingest_worker.py .
+
+
+CMD ["python", "ingest_worker.py"]
+nishant@LAPTOP-M1RRSSDJ:~/Hackathon$ cat docker-compose.yml
+services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+
+  ingest-politics:
+    build: .
+    command: python ingest_worker.py
+    environment:
+      CATEGORY: politics
+      RSS_URL: https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms
+    depends_on:
+      - redis
+
+  ingest-sports:
+    build: .
+    command: python ingest_worker.py
+    environment:
+      CATEGORY: sports
+      RSS_URL: https://timesofindia.indiatimes.com/rssfeeds/4719148.cms
+    depends_on:
+      - redis
+
+  ingest-technology:
+    build: .
+    command: python ingest_worker.py
+    environment:
+      CATEGORY: technology
+      RSS_URL: https://timesofindia.indiatimes.com/rssfeeds/5880659.cms
+    depends_on:
+      - redis
+
+  ingest-india:
+    build: .
+    command: python ingest_worker.py
+    environment:
+      CATEGORY: india
+      RSS_URL: https://timesofindia.indiatimes.com/rssfeeds/296589292.cms
+    depends_on:
+      - redis
